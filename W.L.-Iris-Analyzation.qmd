@@ -1,0 +1,497 @@
+---
+title: "Iris Analysis"
+author: "William L."
+format: 
+  html:
+    self-contained: true
+---
+## WD: setwd("C:/Users/william_l/OneDrive/Desktop/Iris Analysis")
+
+## Background
+
+The Iris dataset portrays a fundamental example of how data can be utilized to extract meaningful patterns and initiate predictions. This embodies the concept of using empirical data to inform and validate scientific methods upon understanding natural phenomena and tailoring it towards informed decisions based on data.
+
+## Loading Datasets
+
+Initiating import of Iris.csv, dataset containing measurements of various Iris flowers.
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F}
+iris<-read.csv("Iris.csv")
+```
+
+## Loading packages
+
+There are packages that are utilized for data manipulation, visualization, and creation of interactive web applications.
+
+- `ggplot2`: A system for creating graphics based on the Grammar of Graphics.
+- `dplyr`: A package for data manipulation and transformation.
+- `reshape2`: A package for reshaping data between wide and long formats.
+- `formattable`: Provides functions to create formattable data frames.
+- `gridExtra`: Provides functions to arrange multiple grid-based plots.
+- `ggExtra`: Adds marginal plots to ggplot2 plots.
+- `plotly`: Enables interactive, web-based plots.
+- `rgeos`: Provides functions for geometric operations on spatial objects.
+- `sp`: Provides classes and methods for spatial data.
+- `shiny`: A framework for building interactive web applications.
+- `grid`: A package for graphical operations.
+
+These libraries together provide powerful tools for data analysis, visualization, and application development.
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(formattable)
+library(gridExtra)
+library(ggExtra)
+library(plotly)
+library(sf)
+library(sp)
+library(shiny)
+library(grid)
+```
+
+## Table for Iris
+
+Using formattable to create a visually enhanced table of Iris dataset
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+formattable(iris,list(
+  area(col = c(SepalLengthCm,SepalWidthCm,PetalLengthCm,PetalWidthCm))~color_bar("pink"),
+  Species=color_tile("white","dodgerblue3")
+))%>%
+  as.datatable()
+```
+
+## Calculation of Mean
+
+Processes the dataset to calculate the mean of each measurements
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+df<-iris[,2:6]
+df<-melt(df,id.vars = "Species",measure.vars=c("SepalLengthCm","SepalWidthCm","PetalLengthCm","PetalWidthCm" ))
+df<-dcast(df,Species~variable,mean)
+formattable(df,list(area(col=c(SepalLengthCm,SepalWidthCm,PetalLengthCm,PetalWidthCm))~color_bar("navy"))
+)
+```
+
+## Output of Standard Deviation
+
+Evaluates Standard Dev. of dataset for each species, rounding values to two digits, then formats the table with bars.
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+df<-iris[,2:6]
+df<-melt(df,id.vars = "Species",measure.vars=c("SepalLengthCm","SepalWidthCm","PetalLengthCm","PetalWidthCm" ))
+df<-dcast(df,Species~variable,sd)
+
+for(i in 2:5){
+  df[,i]<-signif(df[,i],2)
+}
+
+
+
+
+
+formattable(df,list(area(col=c(SepalLengthCm,SepalWidthCm,PetalLengthCm,PetalWidthCm))~color_bar("blue"))
+)
+```
+
+## Percent of each species in data
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+species_perc<-iris%>%
+  group_by(Species)%>%
+  summarize(n=n())%>%
+  mutate(Percent=paste0(round(100*(as.numeric(n/sum(n))),2),"%"))
+species_perc<-species_perc[,c(1,3)]
+formattable(species_perc,list(area(col=Percent)~color_bar("lightblue")))
+```
+
+```{r, message=FALSE,warning=FALSE,comment=NA,echo=F}
+Iris_setosa<-subset(iris,Species=="Iris-setosa")
+Iris_versicolor<-subset(iris,Species=="Iris-versicolor")
+Iris_virginica<-subset(iris,Species=="Iris-virginica")
+```
+
+## GGplot scatter & LOESS
+
+```{r, message=FALSE,warning=FALSE,comment=NA,echo=F}
+o<-ggplot(Iris_setosa,aes(SepalLengthCm,SepalWidthCm))+
+  geom_point()+
+  geom_smooth(method = 'loess',lty=5)+
+  geom_vline(xintercept = mean(Iris_setosa$SepalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  geom_hline(yintercept = mean(Iris_setosa$SepalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="Sepal Length (cm)",y="Sepal Width (cm)")+
+  theme(panel.grid.major.x = element_line(color="black",linetype = 3),
+        panel.grid.minor.x = element_line(color="black",linetype = 3),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3))+
+  annotate("segment",x=4.35,xend=4.4,y=mean(Iris_setosa$SepalWidthCm)+0.55,yend =mean(Iris_setosa$SepalWidthCm)+0.05 ,arrow=arrow(),color="green3")+
+  annotate("text",x=4.35,y=mean(Iris_setosa$SepalWidthCm)+0.65,label="Width \nMean",color="green3",size=3.5)+
+  annotate("segment",x=mean(Iris_setosa$SepalLengthCm)+0.2,xend=mean(Iris_setosa$SepalLengthCm)+0.02,y=2.35,yend =2.35 ,arrow=arrow(),color="red3")+
+  annotate("text",x=mean(Iris_setosa$SepalLengthCm)+0.3,y=2.35,label="Length \nMean",color="red3",size=3.5)
+  
+  
+
+p<-ggplot(Iris_setosa,aes(SepalLengthCm))+
+  geom_histogram(fill="deepskyblue2",alpha=.5,binwidth = 0.05)+
+  geom_vline(xintercept = mean(Iris_setosa$SepalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.x =element_line(color="black",linetype = 3),
+        panel.grid.minor.x =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0,0.03,-0.85,0.64),"cm"))
+
+q<-ggplot(Iris_setosa,aes(SepalWidthCm))+
+  geom_histogram(fill="deepskyblue2",alpha=.5,binwidth = 0.05)+
+  geom_vline(xintercept = mean(Iris_setosa$SepalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0.34,0,0.52,-.9),"cm"))+
+  coord_flip()
+
+r<-ggplot(Iris_setosa,aes(SepalLengthCm,SepalWidthCm))+
+  geom_boxplot(color="deepskyblue2",lwd=1)+
+  geom_hline(yintercept = mean(Iris_setosa$SepalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0.41,0,.6,-.6),"cm"))
+ 
+
+s<-ggplot(Iris_setosa,aes(SepalWidthCm,SepalLengthCm))+
+  geom_boxplot(color="deepskyblue2",lwd=1)+
+  geom_hline(yintercept = mean(Iris_setosa$SepalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.x =element_line(color="black",linetype = 3),
+        panel.grid.minor.x =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(.5,.2,-.5,.8),"cm"))+
+  coord_flip()
+
+Iris_setosa_Sepal<- ggplot(data=data.frame(x=0,y=0))+geom_point(aes(x=x,y=y),size=-1)+
+  labs(x="",y="")+
+  annotate('text', x = 0, y = 0, label = "Iris-setosa\nSepal",size=8)+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_blank(),
+        plot.margin = unit(c(0,0,-1,-1),"cm"))
+
+
+grid.arrange(o,p,q,r,s,Iris_setosa_Sepal,layout_matrix=matrix(c(5,2,1,1,1,1,5,2,1,1,1,1,5,2,1,1,1,1,5,2,1,1,1,1,6,6,3,3,3,3,6,6,4,4,4,4),nrow = 6))
+```
+
+##  GGplot2 to depict relationship between Petal Length & Petal Width
+
+- Plotting
+
+  - Made a graph that portrays the relationship between two measurements of Iris Setosa flower
+  
+- Utilizing Trend Line
+
+  - Line to the graph to depict overall trend/pattern in the data
+  
+- Mean
+
+  - Mean line on the graph to show average petal length and average petal width
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+o<-ggplot(Iris_setosa,aes(PetalLengthCm,PetalWidthCm))+
+  geom_point()+
+  geom_smooth(method = 'loess',lty=5)+
+  geom_vline(xintercept = mean(Iris_setosa$PetalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  geom_hline(yintercept = mean(Iris_setosa$PetalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="Sepal Length (cm)",y="Sepal Width (cm)")+
+  theme(plot.margin = unit(c(0,0,0,0),"cm"),
+        panel.grid.major.x = element_line(color="black",linetype = 3),
+        panel.grid.minor.x = element_line(color="black",linetype = 3),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3))+
+  
+  annotate("segment",x=1.05,xend=1.05,y=mean(Iris_setosa$PetalWidthCm)+0.15,yend =mean(Iris_setosa$PetalWidthCm)+0.02 ,arrow=arrow(),color="green3")+
+  annotate("text",x=1.05,y=mean(Iris_setosa$PetalWidthCm)+0.2,label="Width \nMean",color="green3",size=3.5)+
+  annotate("segment",x=mean(Iris_setosa$PetalLengthCm)+0.15,xend=mean(Iris_setosa$PetalLengthCm)+0.02,y=.03,yend =.03 ,arrow=arrow(),color="red3")+
+  annotate("text",x=mean(Iris_setosa$PetalLengthCm)+0.2,y=.03,label="Length \nMean",color="red3",size=3.5)
+
+p<-ggplot(Iris_setosa,aes(PetalLengthCm))+
+  geom_histogram(fill="deepskyblue2",alpha=.5,binwidth = 0.05)+
+   geom_vline(xintercept = mean(Iris_setosa$PetalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.x =element_line(color="black",linetype = 3),
+        panel.grid.minor.x =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0,-0.3,-0.7,0.3),"cm"))
+
+q<-ggplot(Iris_setosa,aes(PetalWidthCm))+
+  geom_histogram(fill="deepskyblue2",alpha=.5,binwidth = 0.05)+
+  geom_vline(xintercept = mean(Iris_setosa$PetalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(-0.24,-0.1,1.57,-.68),"cm"))+
+  coord_flip()
+
+r<-ggplot(Iris_setosa,aes(PetalLengthCm,PetalWidthCm))+
+  geom_boxplot(color="deepskyblue2",lwd=1)+
+  geom_hline(yintercept = mean(Iris_setosa$PetalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0.05,0,1.87,-0.6),"cm"))
+
+s<-ggplot(Iris_setosa,aes(PetalWidthCm,PetalLengthCm))+
+  geom_boxplot(color="deepskyblue2",lwd=1)+
+   geom_hline(yintercept = mean(Iris_setosa$PetalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.x =element_line(color="black",linetype = 3),
+        panel.grid.minor.x =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0,-0.01,-0.6,0.6),"cm"))+
+  coord_flip()
+
+Iris_setosa_Petal<-ggplot(data=data.frame(x=0,y=0))+geom_point(aes(x=x,y=y),size=-1)+
+  labs(x="",y="")+
+  annotate('text', x = 0, y = 0, label = "Iris-setosa\nPetal",size=8)+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_blank(),
+        plot.margin = unit(c(0,0,-1,-1),"cm"))
+
+grid.arrange(o,p,q,r,s,Iris_setosa_Petal,layout_matrix=matrix(c(5,2,1,1,1,1,5,2,1,1,1,1,5,2,1,1,1,1,5,2,1,1,1,1,6,6,3,3,3,3,6,6,4,4,4,4),nrow = 6))
+```
+
+## Iris Versicolor (Sepal Length v. Sepal Width)
+
+Detailed graph to visualize relationship between Sepal Length and Sepal Width of Iris Versicolor.
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+o<-ggplot(Iris_versicolor,aes(SepalLengthCm,SepalWidthCm))+
+  geom_point()+
+  geom_smooth(method = 'loess',lty=5)+
+  labs(x="Sepal Length (cm)",y="Sepal Width (cm)")+
+  geom_vline(xintercept = mean(Iris_versicolor$SepalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  geom_hline(yintercept = mean(Iris_versicolor$SepalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="Sepal Length (cm)",y="Sepal Width (cm)")+
+  theme(panel.grid.major.x = element_line(color="black",linetype = 3),
+        panel.grid.minor.x = element_line(color="black",linetype = 3),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3))+
+   annotate("segment",x=5,xend=5.1,y=mean(Iris_versicolor$SepalWidthCm)+0.35,yend =mean(Iris_versicolor$SepalWidthCm)+0.05 ,arrow=arrow(),color="green3")+
+  annotate("text",x=5,y=mean(Iris_versicolor$SepalWidthCm)+0.47,label="Width \nMean",color="green3",size=3.5)+
+  annotate("segment",x=mean(Iris_versicolor$SepalLengthCm)+0.35,xend=mean(Iris_versicolor$SepalLengthCm)+0.02,y=2.02,yend =2.02 ,arrow=arrow(),color="red3")+
+  annotate("text",x=mean(Iris_versicolor$SepalLengthCm)+0.48,y=2.02,label="Length \nMean",color="red3",size=3.5)
+  
+
+p<-ggplot(Iris_versicolor,aes(SepalLengthCm))+
+  geom_histogram(fill="deepskyblue2",alpha=.5,binwidth = 0.05)+
+  geom_vline(xintercept = mean(Iris_versicolor$SepalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.x =element_line(color="black",linetype = 3),
+        panel.grid.minor.x =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0,0.08,-0.85,0.68),"cm"))
+
+q<-ggplot(Iris_versicolor,aes(SepalWidthCm))+
+  geom_histogram(fill="deepskyblue2",alpha=.5,binwidth = 0.05)+
+   geom_vline(xintercept = mean(Iris_versicolor$SepalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0.75,0,0.85,-.9),"cm"))+
+  coord_flip()
+
+r<-ggplot(Iris_versicolor,aes(SepalLengthCm,SepalWidthCm))+
+  geom_boxplot(color="deepskyblue2",lwd=1)+
+  geom_hline(yintercept = mean(Iris_versicolor$SepalWidthCm),lty=6,color="green3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.y =element_line(color="black",linetype = 3),
+        panel.grid.minor.y =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(0.86,0,.95,-.6),"cm"))
+
+s<-ggplot(Iris_versicolor,aes(SepalWidthCm,SepalLengthCm))+
+  geom_boxplot(color="deepskyblue2",lwd=1)+
+  geom_hline(yintercept = mean(Iris_versicolor$SepalLengthCm),lty=6,color="red3",lwd=1,alpha=.5)+
+  labs(x="",y="",xaxt="")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major.x =element_line(color="black",linetype = 3),
+        panel.grid.minor.x =element_line(color="black",linetype = 3),
+        plot.margin = unit(c(.5,.2,-.6,.8),"cm"))+
+  coord_flip()
+
+Iris_versicolor_Sepal<- ggplot(data=data.frame(x=0,y=0))+geom_point(aes(x=x,y=y),size=-1)+
+  labs(x="",y="")+
+  annotate('text', x = 0, y = 0, label = "Iris-versicolor\nSepal",size=8)+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_blank(),
+        plot.margin = unit(c(0,0,-1,-1),"cm"))
+
+
+grid.arrange(o,p,q,r,s,Iris_versicolor_Sepal,layout_matrix=matrix(c(5,2,1,1,1,1,5,2,1,1,1,1,5,2,1,1,1,1,5,2,1,1,1,1,6,6,3,3,3,3,6,6,4,4,4,4),nrow = 6))
+```
+
+## Convex hulls of Sepal Length and Sepal Width
+
+- The `test` function is primarily utilized to take a data from `df` and return the convex hull of Sepal Length and Sepal Width
+
+- The `test` function is applied to the `iris` dataset, grouping by `Species`
+
+- The `ggplot` function is used to create a scatter plot of Sepal Length v. Sepal Width, points colored by `Species`
+
+- `geom_polygon` adds polygons to the plot, representing the convex hulls for each species
+
+Upon plotting the data points and using convex hulls to outline boundaries of each species, this becomes less of a hassle to examine how the measurements vary between Setosa, Versicolor, and Virginica. Implementation of marginal points highlights specific outliers.
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+test<-function(df) df[chull(df$SepalLengthCm,df$SepalWidthCm),]
+  iris2<-plyr::ddply(iris,"Species",test)
+ggplot(iris,aes(SepalLengthCm,SepalWidthCm))+
+    geom_point(data=iris,aes(color=Species))+
+    geom_polygon(data=iris2,alpha=.3,aes(SepalLengthCm,SepalWidthCm,fill=Species))+
+    theme(legend.position = "bottom",plot.title = element_text(size = 15,hjust = 0.5))+
+  annotate("segment",x=6,xend=5.8,y=3.75,yend =4 ,arrow=arrow(),color="black")+
+  annotate("segment",x=6.2,xend=6.2,y=3.65,yend =3.4 ,arrow=arrow(),color="black")+
+  annotate("segment",x=6.1,xend=6,y=3.65,yend =3.4 ,arrow=arrow(),color="black")+
+  annotate("text",x=6.21,y=3.72,label="marginal points",color="black",size=3)
+```
+
+## Plot with annotations
+
+Visually representing intersections between different categories, assisted with specified labels and segments.
+
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+ggplot(data=data.frame(x=0,y=0))+geom_point(aes(x=x,y=y),size=-1)+
+  labs(x="",y="")+
+  annotate('text', x = 0.06, y = 2, label = "The position of \nthe point you assign",size=3.5)+
+  annotate("segment",x=0.06,xend=0.06,y=1.9,yend =1.8 ,color="black")+
+  annotate("segment",x=-0.4,xend=.5,y=1.8,yend =1.8 ,color="black")+
+  annotate("segment",x=-0.4,xend=-.4,y=1.8,yend =1.53 ,color="black")+
+  annotate('text', x = -.4, y = 1.48, label = "Rp",size=3.5)+
+  annotate("segment",x=-0.4,xend=-.4,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=-0.33,xend=-.33,y=1.8,yend =1.53 ,color="black")+
+  annotate('text', x = -.33, y = 1.48, label = "Rr",size=3.5)+
+  annotate("segment",x=-0.33,xend=-.33,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=-0.4,xend=-.33,y=1.3,yend =1.3 ,color="black")+
+  annotate("segment",x=-0.37,xend=-.37,y=1.3,yend =1.1 ,color="black")+
+  annotate('text', x = -.37, y = 1.05, label = "Iris-setosa",size=3.5)+
+  annotate("segment",x=-0.2,xend=-.2,y=1.8,yend =1.53 ,color="black")+
+  annotate("segment",x=-0.1,xend=-.1,y=1.8,yend =1.53 ,color="black")+
+  annotate("segment",x=0,xend=0,y=1.8,yend =1.53 ,color="black")+
+  annotate("segment",x=0.12,xend=.12,y=1.8,yend =1.53 ,color="black")+
+  annotate("segment",x=0.22,xend=0.22,y=1.8,yend =1.53 ,color="black")+
+  annotate("segment",x=0.32,xend=0.32,y=1.8,yend =1.53 ,color="black")+
+  annotate("segment",x=0.4,xend=0.4,y=1.8,yend =1.53 ,color="black")+
+  annotate("segment",x=0.5,xend=0.5,y=1.8,yend =1.53 ,color="black")+
+  annotate('text', x = -.2, y = 1.48, label = "Gp-(Gp∩Bp)",size=3)+
+  annotate('text', x = -.1, y = 1.48, label = "Gr-(Gr∩Br)",size=3)+
+  annotate('text', x = 0, y = 1.48, label = "Gr-(Gr∩Br)",size=3)+
+  annotate('text', x = .12, y = 1.48, label = "Bp-(Gp∩Bp)",size=3)+
+  annotate('text', x = .22, y = 1.48, label = "Br-(Br∩Gr)",size=3)+
+  annotate('text', x = .32, y = 1.48, label = "Br-(Br∩Gp)",size=3)+
+  annotate('text', x = .4, y = 1.48, label = "Gp∩Bp",size=3)+
+  annotate('text', x = .5, y = 1.38, label = "(Gr∩Br)-Gp \nor \n(Gr∩Br)-Bp",size=3)+
+  annotate("segment",x=-0.2,xend=-.2,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=-0.1,xend=-.1,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=0,xend=0,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=.12,xend=.12,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=.22,xend=.22,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=.32,xend=.32,y=1.41,yend =1.3 ,color="black")+
+  annotate("segment",x=.4,xend=.4,y=1.41,yend =1.1 ,color="black")+
+  annotate("segment",x=.5,xend=.5,y=1.23,yend =1.1 ,color="black")+
+  annotate("segment",x=-0.2,xend=0,y=1.3,yend =1.3 ,color="black")+
+  annotate("segment",x=.12,xend=.32,y=1.3,yend =1.3 ,color="black")+
+  annotate("segment",x=-.1,xend=-.1,y=1.3,yend =1.1 ,color="black")+
+  annotate("segment",x=.22,xend=.22,y=1.3,yend =1.1 ,color="black")+
+  annotate('text', x = -.1, y = 1.05, label = "Iris-versicolor",size=3.5)+
+  annotate('text', x = .22, y = 1.05, label = "Iris-virginica",size=3.5)+
+  annotate('text', x = .4, y = .95, label = "Iris-versicolor \nor \n Iris-virginica",size=3.5)+
+  annotate('text', x = .5, y = 1, label = "cannot \nrecognize",size=3.5)+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_blank(),
+        plot.margin = unit(c(0,0,-1,-1),"cm"))
+```
+```{r, message=FALSE, warning=FALSE, comment=NA, echo=F }
+circleFun <- function(center = c(0,0),diameter = 1, npoints = 100){
+    r = diameter / 2
+    tt <- seq(0,2*pi,length.out = npoints)
+    xx <- center[1] + r * cos(tt)
+    yy <- center[2] + r * sin(tt)
+    return(data.frame(x = xx, y = yy))
+}
+cir1<-circleFun(c(.5,0),1.5,100)
+cir2<-circleFun(c(-.5,0),1.5,100)
+ggplot()+
+  geom_polygon(data=cir1,aes(x,y,fill="Bp"),alpha=.3)+
+  geom_polygon(data=cir2,aes(x,y,fill="Gp"),alpha=.3)+
+  labs(x="",y="",title="The ' - ' symble meaning \nin Structure of plot logic\n \nEx: Gp-(Gp∩Bp)")+
+  theme(axis.text.x = element_blank(),axis.text.y = element_blank(),axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        panel.grid.major = element_blank(),
+        plot.title = element_text(size = 15,hjust = 0.5))+
+  annotate("segment",x=-1.05,xend =-.8,y=-.7,yend=-.55,arrow=arrow())+
+  annotate("text",x=-1.1,y=-0.76,label="Gp-(Gp∩Bp)")+
+  annotate("segment",x=0,xend =0,y=-.7,yend=-.3,arrow=arrow())+
+  annotate("text",x=0,y=-0.76,label="(Gp∩Bp)")
+                      
+  
+```
+
+
+
+
+
+
+
